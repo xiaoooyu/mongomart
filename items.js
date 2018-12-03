@@ -232,37 +232,36 @@ function ItemDAO(database) {
         }
     }
 
-
+    /*
+    * TODO-lab3
+    *
+    * LAB #3: Implement the getItem() method.
+    *
+    * Using the itemId parameter, query the "item" collection by
+    * _id and pass the matching item to the callback function.
+    *
+    */            
     this.getItem = function (itemId, callback) {
-        "use strict";
-
-        /*
-         * TODO-lab3
-         *
-         * LAB #3: Implement the getItem() method.
-         *
-         * Using the itemId parameter, query the "item" collection by
-         * _id and pass the matching item to the callback function.
-         *
-         */
-
-        var item = this.createDummyItem();
-
-        // TODO-lab3 Replace all code above (in this method).
-
-        // TODO Include the following line in the appropriate
-        // place within your code to pass the matching item
-        // to the callback.
-        callback(item);
+        "use strict";       
+        
+        let collection = this.db.collection('item')
+        collection.findOne({"_id": itemId}, (err, item) => {
+            if (err) {
+                console.log(err)
+                callback(null)
+                return
+            } 
+                
+            callback(item)            
+        })        
     }
 
-
-    this.getRelatedItems = function (callback) {
+    this.getRelatedItems = function(callback) {
         "use strict";
 
         this.db.collection("item").find({})
             .limit(4)
-            .toArray(function (err, relatedItems) {
+            .toArray(function(err, relatedItems) {
                 assert.equal(null, err);
                 callback(relatedItems);
             });
