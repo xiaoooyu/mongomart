@@ -47,7 +47,7 @@ nunjucksDate.setDefaultFormat('MMMM Do YYYY, h:mm:ss a');
 env.addFilter("date", nunjucksDate);
 
 var ITEMS_PER_PAGE = 5;
-
+const dbName = 'mongomart';
 // Hardcoded USERID for use with the shopping cart portion
 var USERID = "558098a65133816958968d88";
 
@@ -57,8 +57,8 @@ MongoClient.connect('mongodb://localhost:27017/mongomart', function(err, db) {
     assert.equal(null, err);
     console.log("Successfully connected to MongoDB.");
 
-    var items = new ItemDAO(db);
-    var cart = new CartDAO(db);
+    var items = new ItemDAO(db.db(dbName));
+    var cart = new CartDAO(db.db(dbName));
     
     var router = express.Router();
 
