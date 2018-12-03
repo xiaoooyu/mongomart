@@ -24,118 +24,138 @@ function ItemDAO(database) {
 
     this.db = database;
 
-    this.getCategories = function(callback) {
+    /*
+     * TODO-lab1A
+     *
+     * LAB #1A: Implement the getCategories() method.
+     *
+     * Write an aggregation query on the "item" collection to return the
+     * total number of items in each category. The documents in the array
+     * output by your aggregation should contain fields for "_id" and "num".
+     *
+     * HINT: Test your mongodb query in the shell first before implementing
+     * it in JavaScript.
+     *
+     * In addition to the categories created by your aggregation query,
+     * include a document for category "All" in the array of categories
+     * passed to the callback. The "All" category should contain the total
+     * number of items across all categories as its value for "num". The
+     * most efficient way to calculate this value is to iterate through
+     * the array of categories produced by your aggregation query, summing
+     * counts of items in each category.
+     *
+     * Ensure categories are organized in alphabetical order before passing
+     * to the callback.
+     *
+     */
+    this.getCategories = function (callback) {
         "use strict";
+        this.db.collection('item').aggregate([
+            { '$match': { category: { $ne: null } } },
+            { '$group': { '_id': "$category", 'num': { '$sum': 1 } } },
+            { '$sort': { '_id': 1 } }
+        ], (err, cursor) => {
+            if (err) {
+                console.log(err)
+                return
+            }
 
-        /*
-        * TODO-lab1A
-        *
-        * LAB #1A: Implement the getCategories() method.
-        *
-        * Write an aggregation query on the "item" collection to return the
-        * total number of items in each category. The documents in the array
-        * output by your aggregation should contain fields for "_id" and "num".
-        *
-        * HINT: Test your mongodb query in the shell first before implementing
-        * it in JavaScript.
-        *
-        * In addition to the categories created by your aggregation query,
-        * include a document for category "All" in the array of categories
-        * passed to the callback. The "All" category should contain the total
-        * number of items across all categories as its value for "num". The
-        * most efficient way to calculate this value is to iterate through
-        * the array of categories produced by your aggregation query, summing
-        * counts of items in each category.
-        *
-        * Ensure categories are organized in alphabetical order before passing
-        * to the callback.
-        *
-        */
-
-        var categories = [];
-        var category = {
-            _id: "All",
-            num: 9999
-        };
-
-        categories.push(category)
-
-        // TODO-lab1A Replace all code above (in this method).
-
-        // TODO Include the following line in the appropriate
-        // place within your code to pass the categories array to the
-        // callback.
-        callback(categories);
+            var categories = []
+            var cate_all = {
+                _id: "All",
+                num: 0
+            }
+            categories.push(cate_all)
+            cursor.toArray((err, documents) => {
+                documents.forEach(cate => {
+                    cate_all.num += cate.num
+                    categories.push(cate)
+                })
+                // console.log(categories)
+                callback(categories)
+            })
+        })
     }
 
-
-    this.getItems = function(category, page, itemsPerPage, callback) {
+    /*
+     * TODO-lab1B
+     *
+     * LAB #1B: Implement the getItems() method.
+     *
+     * Create a query on the "item" collection to select only the items
+     * that should be displayed for a particular page of a given category.
+     * The category is passed as a parameter to getItems().
+     *
+     * Use sort(), skip(), and limit() and the method parameters: page and
+     * itemsPerPage to identify the appropriate products to display on each
+     * page. Pass these items to the callback function.
+     *
+     * Sort items in ascending order based on the _id field. You must use
+     * this sort to answer the final project questions correctly.
+     *
+     * Note: Since "All" is not listed as the category for any items,
+     * you will need to query the "item" collection differently for "All"
+     * than you do for other categories.
+     *
+     */
+    this.getItems = function (category, page, itemsPerPage, callback) {
         "use strict";
-
-        /*
-         * TODO-lab1B
-         *
-         * LAB #1B: Implement the getItems() method.
-         *
-         * Create a query on the "item" collection to select only the items
-         * that should be displayed for a particular page of a given category.
-         * The category is passed as a parameter to getItems().
-         *
-         * Use sort(), skip(), and limit() and the method parameters: page and
-         * itemsPerPage to identify the appropriate products to display on each
-         * page. Pass these items to the callback function.
-         *
-         * Sort items in ascending order based on the _id field. You must use
-         * this sort to answer the final project questions correctly.
-         *
-         * Note: Since "All" is not listed as the category for any items,
-         * you will need to query the "item" collection differently for "All"
-         * than you do for other categories.
-         *
-         */
-
-        var pageItem = this.createDummyItem();
-        var pageItems = [];
-        for (var i=0; i<5; i++) {
-            pageItems.push(pageItem);
+        let collection = this.db.collection('item')
+        let cursor
+        if (category === 'All') {
+            cursor = collection.find()
+        } else {
+            cursor = collection.find({ "category": category })
         }
 
-        // TODO-lab1B Replace all code above (in this method).
+        cursor.skip(page * itemsPerPage)
+            .limit(itemsPerPage)
+            .sort({ "_id": 1 })
+            .toArray((err, documents) => {
+                if (err) {
+                    console.log(err)
+                    return
+                }
 
-        // TODO Include the following line in the appropriate
-        // place within your code to pass the items for the selected page
-        // to the callback.
-        callback(pageItems);
+                callback(documents)
+            })
     }
 
-
-    this.getNumItems = function(category, callback) {
+    /*
+    * TODO-lab1C:
+    *
+    * LAB #1C: Implement the getNumItems method()
+    *
+    * Write a query that determines the number of items in a category
+    * and pass the count to the callback function. The count is used in
+    * the mongomart application for pagination. The category is passed
+    * as a parameter to this method.
+    *
+    * See the route handler for the root path (i.e. "/") for an example
+    * of a call to the getNumItems() method.
+    *
+    */
+    this.getNumItems = function (category, callback) {
         "use strict";
 
-        var numItems = 0;
+        let collection = this.db.collection('item')
+        let cursor
+        if (category === 'All') {
+            cursor = collection.find()
+        } else {
+            cursor = collection.find({ "category": category })
+        }
 
-        /*
-         * TODO-lab1C:
-         *
-         * LAB #1C: Implement the getNumItems method()
-         *
-         * Write a query that determines the number of items in a category
-         * and pass the count to the callback function. The count is used in
-         * the mongomart application for pagination. The category is passed
-         * as a parameter to this method.
-         *
-         * See the route handler for the root path (i.e. "/") for an example
-         * of a call to the getNumItems() method.
-         *
-         */
-
-         // TODO Include the following line in the appropriate
-         // place within your code to pass the count to the callback.
-        callback(numItems);
+        cursor.count((err, numItems) => {
+            if (err) {
+                console.log(err)
+                return
+            }
+            callback(numItems);
+        });
     }
 
-
-    this.searchItems = function(query, page, itemsPerPage, callback) {
+    this.searchItems = function (query, page, itemsPerPage, callback) {
         "use strict";
 
         /*
@@ -164,7 +184,7 @@ function ItemDAO(database) {
 
         var item = this.createDummyItem();
         var items = [];
-        for (var i=0; i<5; i++) {
+        for (var i = 0; i < 5; i++) {
             items.push(item);
         }
 
@@ -177,7 +197,7 @@ function ItemDAO(database) {
     }
 
 
-    this.getNumSearchItems = function(query, callback) {
+    this.getNumSearchItems = function (query, callback) {
         "use strict";
 
         var numItems = 0;
@@ -199,7 +219,7 @@ function ItemDAO(database) {
     }
 
 
-    this.getItem = function(itemId, callback) {
+    this.getItem = function (itemId, callback) {
         "use strict";
 
         /*
@@ -223,19 +243,19 @@ function ItemDAO(database) {
     }
 
 
-    this.getRelatedItems = function(callback) {
+    this.getRelatedItems = function (callback) {
         "use strict";
 
         this.db.collection("item").find({})
             .limit(4)
-            .toArray(function(err, relatedItems) {
+            .toArray(function (err, relatedItems) {
                 assert.equal(null, err);
                 callback(relatedItems);
             });
     };
 
 
-    this.addReview = function(itemId, comment, name, stars, callback) {
+    this.addReview = function (itemId, comment, name, stars, callback) {
         "use strict";
 
         /*
@@ -269,7 +289,7 @@ function ItemDAO(database) {
     }
 
 
-    this.createDummyItem = function() {
+    this.createDummyItem = function () {
         "use strict";
 
         var item = {
